@@ -1,12 +1,6 @@
 # PlutoRESTClient.jl
 Interact with your Pluto notebooks from other Julia programs!
 ## How to use
-First, make sure you run Pluto with the following configuration option to expose the "What you see is what you REST" API.
-```julia
-import Pluto
-Pluto.run(; enable_rest=true)
-```
-### Examples
 ```julia
 using PlutoRESTClient
 
