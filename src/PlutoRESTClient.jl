@@ -12,8 +12,10 @@ export PlutoNotebook, @resolve
 
 Function equivalent of syntax described in documentation for `PlutoNotebook`.
 
+!!! note
+    Avoid using this function when possible in favor of the alternate syntax with [`PlutoNotebook`](@ref)
+
 # Examples
-**NOTE**: This function should not be used outside of Pluto unless absolutely necessary.
 ```
 julia> PlutoRESTClient.evaluate(:c, "EuclideanDistance.jl"; a=5., b=12.)
 13.0
@@ -73,7 +75,7 @@ end
     static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
 
 Returns the code for a function which uses the relevant Pluto notebook code to compute the value of `output` given `inputs` as parameters.
-This function is what the `@resolve` macro calls under-the-hood, whcih subsequently passes the result into `eval`.
+This function is what the [`@resolve`](@ref) macro calls under-the-hood, whcih subsequently passes the result into `eval`.
 """
 function static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
     @warn "Ensure you trust this host, as the function returned could be malicious"
@@ -201,7 +203,8 @@ end
     resolve(notebook, inputs, output)
 
 Returns a function which when called uses the relevant Pluto notebook code to compute `output` given `inputs` as parameters. This
-computation occurs on the **local** Julia session and not the Pluto one.
+computation occurs on the **local** Julia session and not the Pluto one. As a result this macro will only work for a narrow set of
+notebook code, as the macro isn't smart enough (yet) to figure out module dependencies or define structures.
 
 # Examples
 ```julia-repl
@@ -216,9 +219,10 @@ julia> distance2d(5., 12.)
 13.0
 ```
 
-**NOTE**: The distance2d function defined by `@resolve` does **not** connect to Pluto through the REST API to compute results. Rather,
-its behavior is akin to copy-pasting the relevant section of the Pluto notebook's code into the current Julia session and making
-it callable with a function.
+!!! warning
+    The distance2d function defined by `@resolve` does **not** connect to Pluto through the REST API to compute results. Rather,
+    its behavior is akin to copy-pasting the relevant section of the Pluto notebook's code into the current Julia session and making
+    it callable with a function.
 """
 macro resolve(notebook, inputs, output)
     :(
