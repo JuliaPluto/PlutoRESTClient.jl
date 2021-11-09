@@ -1,7 +1,7 @@
 name = "PlutoRESTClient"
 uuid = "fe49e839-af43-4fee-8eb4-ecf92bc83904"
 authors = ["Connor Burns <cburns@cot.llc>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
