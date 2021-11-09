@@ -4,18 +4,8 @@ module PlutoRESTClient
 import HTTP
 import Serialization
 
-export PlutoNotebook
+export PlutoNotebook, @resolve
 
-
-function static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
-    @warn "Ensure you trust this host, as the function returned could be malicious"
-
-    query = ["outputs" => String(output), "inputs" => join(inputs, ",")]
-    request_uri = merge(HTTP.URI("http://$(host)/v1/notebook/$filename/static"); query=query)
-    response = HTTP.get(request_uri)
-
-    Meta.parse(String(response.body))
-end
 
 """
     evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234"; kwargs...)
@@ -77,6 +67,22 @@ function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::A
     end
     
     return Serialization.deserialize(IOBuffer(response.body))
+end
+
+"""
+    static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
+
+Returns the code for a function which uses the relevant Pluto notebook code to compute the value of `output` given `inputs` as parameters.
+This function is what the `@resolve` macro calls under-the-hood, whcih subsequently passes the result into `eval`.
+"""
+function static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
+    @warn "Ensure you trust this host, as the function returned could be malicious"
+
+    query = ["outputs" => String(output), "inputs" => join(inputs, ",")]
+    request_uri = merge(HTTP.URI("http://$(host)/v1/notebook/$filename/static"); query=query)
+    response = HTTP.get(request_uri)
+
+    Meta.parse(String(response.body))
 end
 
 """
@@ -188,6 +194,36 @@ function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
 
     # https://docs.julialang.org/en/v1/base/base/#Core.NamedTuple
     return (; zip(symbols, outputs)...)
+end
+
+
+"""
+    resolve(notebook, inputs, output)
+
+Returns a function which when called uses the relevant Pluto notebook code to compute `output` given `inputs` as parameters. This
+computation occurs on the **local** Julia session and not the Pluto one.
+
+# Examples
+```julia-repl
+julia> nb = PlutoNotebook("EuclideanDistance.jl");
+
+julia> distance2d = @resolve nb [:a, :b] :c
+
+julia> distance2d(3., 4.)
+5.0
+
+julia> distance2d(5., 12.)
+13.0
+```
+
+**NOTE**: The distance2d function defined by `@resolve` does **not** connect to Pluto through the REST API to compute results. Rather,
+its behavior is akin to copy-pasting the relevant section of the Pluto notebook's code into the current Julia session and making
+it callable with a function.
+"""
+macro resolve(notebook, inputs, output)
+    :(
+        eval(static_function($(esc(output)), [$(esc(inputs))...], Base.getfield($(esc(notebook)), :filename), Base.getfield($(esc(notebook)), :host)))
+    )
 end
 
 end # module
