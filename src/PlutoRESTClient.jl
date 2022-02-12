@@ -8,7 +8,7 @@ export PlutoNotebook, @resolve
 
 
 """
-    evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234"; kwargs...)
+    evaluate(output::Symbol, filename::AbstractString, host::AbstractString="http://localhost:1234"; kwargs...)
 
 Function equivalent of syntax described in documentation for `PlutoNotebook`.
 
@@ -21,8 +21,8 @@ julia> PlutoRESTClient.evaluate(:c, "EuclideanDistance.jl"; a=5., b=12.)
 13.0
 ```
 """
-function evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234"; kwargs...)
-    request_uri = HTTP.URI("http://$(host)/v1/notebook/$(HTTP.escapeuri(filename))/eval")
+function evaluate(output::Symbol, filename::AbstractString, host::AbstractString="http://localhost:1234"; kwargs...)
+    request_uri = HTTP.URI("$(host)/v1/notebook/$(HTTP.escapeuri(filename))/eval")
 
     body = IOBuffer()
     Serialization.serialize(body, Dict{String, Any}(
@@ -44,12 +44,12 @@ function evaluate(output::Symbol, filename::AbstractString, host::AbstractString
 end
 
 """
-    call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="localhost:1234")
+    call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="http://localhost:1234")
 
 Function equivalent of syntax described in documentation for `PlutoCallable`.
 """
-function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="localhost:1234")
-    request_uri = HTTP.URI("http://$(host)/v1/notebook/$(HTTP.escapeuri(filename))/call")
+function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="http://localhost:1234")
+    request_uri = HTTP.URI("$(host)/v1/notebook/$(HTTP.escapeuri(filename))/call")
 
     body = IOBuffer()
     Serialization.serialize(body, Dict{String, Any}(
@@ -72,23 +72,23 @@ function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::A
 end
 
 """
-    static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
+    static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="http://localhost:1234")
 
 Returns the code for a function which uses the relevant Pluto notebook code to compute the value of `output` given `inputs` as parameters.
 This function is what the [`@resolve`](@ref) macro calls under-the-hood, whcih subsequently passes the result into `eval`.
 """
-function static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
+function static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="http://localhost:1234")
     @warn "Ensure you trust this host, as the function returned could be malicious"
 
     query = ["outputs" => String(output), "inputs" => join(inputs, ",")]
-    request_uri = merge(HTTP.URI("http://$(host)/v1/notebook/$filename/static"); query=query)
+    request_uri = merge(HTTP.URI("$(host)/v1/notebook/$filename/static"); query=query)
     response = HTTP.get(request_uri)
 
     Meta.parse(String(response.body))
 end
 
 """
-    PlutoNotebook(filename::AbstractString, host::AbstractString="localhost:1234")
+    PlutoNotebook(filename::AbstractString, host::AbstractString="http://localhost:1234")
 
 Reference a Pluto notebook running on a Pluto server somewhere.
 
@@ -107,7 +107,7 @@ struct PlutoNotebook
     host::AbstractString
     filename::AbstractString
 
-    PlutoNotebook(filename::AbstractString, host::AbstractString="localhost:1234") = new(host, filename)
+    PlutoNotebook(filename::AbstractString, host::AbstractString="http://localhost:1234") = new(host, filename)
 end
 function Base.getproperty(notebook::PlutoNotebook, symbol::Symbol)
     Base.getproperty(notebook(), symbol)
@@ -131,7 +131,7 @@ From elsewhere the `PlutoCallable` structure can be called as a function in itse
 julia> nb = PlutoNotebook("EuclideanDistance.jl");
 
 julia> nb.distance
-Pluto.PlutoCallable(PlutoNotebook("localhost:1234", "EuclideanDistance.jl"), :distance)
+Pluto.PlutoCallable(PlutoNotebook("http://localhost:1234", "EuclideanDistance.jl"), :distance)
 
 julia> nb.distance(5., 12.)
 13.0
@@ -155,7 +155,7 @@ An intermediate structure which is returned when one calls a `PlutoNotebook` as 
 julia> nb = PlutoNotebook("EuclideanDistance.jl");
 
 julia> nb_withargs = nb(; a=5., b=12.)
-Pluto.PlutoNotebookWithArgs(PlutoNotebook("localhost:1234", "EuclideanDistance.jl"), Dict{Symbol, Any}(:a => 5.0, :b => 12.0))
+Pluto.PlutoNotebookWithArgs(PlutoNotebook("http://localhost:1234", "EuclideanDistance.jl"), Dict{Symbol, Any}(:a => 5.0, :b => 12.0))
 
 julia> nb_withargs.c
 13.0
