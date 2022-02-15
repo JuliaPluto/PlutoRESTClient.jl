@@ -6,6 +6,42 @@ import Serialization
 
 export PlutoNotebook, @resolve
 
+struct PlutoRESTException <: Exception
+    errors::Dict
+end
+function PlutoRESTException(errors::Vector)
+    PlutoRESTException(Dict(k => errors[k] for k ∈ 1:length(errors)))
+end
+
+function Base.showerror(io::IO, e::PlutoRESTException)
+    println(io, "The following error$(length(e.errors) > 1 ? "s" : "") occurred in the requested Pluto notebook")
+    println(io)
+
+    for (cell_id, err) ∈ e.errors
+        println(io, "=== $cell_id ===")
+        println(io, "  " * replace(get(err, :msg, ""), "\n" => "\n  "))
+        println()
+        # TODO: pretty-print stacktraces
+        # println(io, get(err, :stacktrace, nothing))
+        # println()
+    end
+end
+
+
+function from_body(body::Vector{UInt8}, output::Union{Symbol, Nothing}=nothing)
+    parsed_response = Serialization.deserialize(IOBuffer(body))
+    if haskey(parsed_response, :errored) && parsed_response[:errored]
+        throw(PlutoRESTException(parsed_response[:errors]))
+    elseif isnothing(output)
+        parsed_response
+    elseif haskey(parsed_response, output)
+        parsed_response[output]
+    else
+        @warn "Unrecognized response format"
+        parsed_response
+    end
+end
+
 
 """
     evaluate(output::Symbol, filename::AbstractString, host::AbstractString="http://localhost:1234"; kwargs...)
@@ -40,7 +76,7 @@ function evaluate(output::Symbol, filename::AbstractString, host::AbstractString
         throw(ErrorException(String(response.body)))
     end
 
-    return Serialization.deserialize(IOBuffer(response.body))[output]
+    from_body(response.body, output)
 end
 
 """
@@ -68,7 +104,7 @@ function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::A
         throw(ErrorException(String(response.body)))
     end
     
-    return Serialization.deserialize(IOBuffer(response.body))
+    from_body(response.body)
 end
 
 """
